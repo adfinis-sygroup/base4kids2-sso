@@ -79,9 +79,9 @@ With an additional RewriteRule Apache could be used as a reverse Proxy, passing 
 
 A good place to see the code working is https://lab.0x1b.ch/printenv.cgi
 
-![Bildschirmfoto 2018-09-22 um 09.42.52](doc/Bildschirmfoto 2018-09-22 um 09.42.52.png)
+![Bildschirmfoto 2018-09-22 um 09.42.52](https://raw.githubusercontent.com/adfinis-sygroup/base4kids2-sso/master/doc/Bildschirmfoto%202018-09-22%20um%2009.42.52.png)
 
-![Bildschirmfoto 2018-09-22 um 09.43.17](doc/Bildschirmfoto 2018-09-22 um 09.43.17.png)
+![Bildschirmfoto 2018-09-22 um 09.43.17](https://raw.githubusercontent.com/adfinis-sygroup/base4kids2-sso/master/doc/Bildschirmfoto%202018-09-22%20um%2009.43.17.png)
 
 ## Performance considerations
 
