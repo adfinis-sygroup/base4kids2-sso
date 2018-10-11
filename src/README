@@ -1,0 +1,6 @@
+Various perl modules, required to verify JWT Tokens.
+
+Build with
+$ perl Makefile.PL PREFIX=/opt/b4k2sso
+$ make
+$ make install

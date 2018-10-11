@@ -1,0 +1,18 @@
+#!/usr/bin/perl -w
+
+our ($userAuthorizationUri, $accessTokenUri, $client_id, $client_secret,
+    $context, $scope, $pubkey);
+
+$userAuthorizationUri="https://auth.example.com//authorize";
+$accessTokenUri="https://auth.examle.com/token";
+$client_id="CLIENTID";
+$client_secret="CLIENTSECRET";
+$context="CONTEXT";
+$scope="SCOPE";
+$pubkey=<<"EOF";
+-----BEGIN PUBLIC KEY-----
+Base64EncodedRSAKey
+-----END PUBLIC KEY-----
+EOF
+
+1;

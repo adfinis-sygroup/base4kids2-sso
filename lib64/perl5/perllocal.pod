@@ -1,0 +1,66 @@
+=head2 Wed Oct 10 13:51:45 2018: C<Module> L<CryptX|CryptX>
+
+=over 4
+
+=item *
+
+C<installed into: /opt/b4k2sso/share/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.061>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Oct 10 13:54:45 2018: C<Module> L<Crypt::JWT|Crypt::JWT>
+
+=over 4
+
+=item *
+
+C<installed into: /opt/b4k2sso/share/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.023>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
+=head2 Wed Oct 10 13:56:19 2018: C<Module> L<Crypt::JWT|Crypt::JWT>
+
+=over 4
+
+=item *
+
+C<installed into: /opt/b4k2sso/share/perl5>
+
+=item *
+
+C<LINKTYPE: dynamic>
+
+=item *
+
+C<VERSION: 0.023>
+
+=item *
+
+C<EXE_FILES: >
+
+=back
+
