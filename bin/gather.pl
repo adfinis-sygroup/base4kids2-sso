@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 #
 # Adfinis SyGroup AG
-# https://git.adfinis-sygroup.ch/Beatr/b4k2sso/
+# https://github.com/adfinis-sygroup/base4kids2-sso
 #
 # Get JWT token by using eGov's OAuth2 authorization flow
 #
