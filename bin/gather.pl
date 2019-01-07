@@ -9,6 +9,11 @@ use strict;
 use CGI::Fast qw/:standard/;
 use MIME::Base64;
 use JSON::PP;
+use POSIX qw(strftime);
+use Sys::Hostname;
+use Sys::Syslog qw(:standard :macros);
+use lib "/opt/b4k2sso/lib64/perl5";
+use Crypt::JWT qw(decode_jwt);
 use Data::Dumper;
 
 our ($userAuthorizationUri, $accessTokenUri, $client_id, $client_secret,
@@ -18,8 +23,11 @@ require "/opt/b4k2sso/etc/config.pm";
 my $auth=encode_base64($client_id.":".$client_secret);
 chomp $auth;
 
+openlog("b4k2sso", "ndelay,pid", LOG_LOCAL0);
+
 while (new CGI::Fast) {
   my $myurl=$ENV{'REQUEST_SCHEME'}."://".$ENV{'SERVER_NAME'}."/b4k2sso";
+  my $remote_addr=$ENV{'REMOTE_ADDR'};
 
 #
 # Process redirect for unauthenticated user
@@ -30,6 +38,8 @@ while (new CGI::Fast) {
     $state.=$chars[rand @chars] for 1..8;
 
     my $return_uri=param('return_uri');
+
+    syslog(LOG_INFO, "$remote_addr [$state]: Redirect to portal");
 
     print "Location: ".
           $userAuthorizationUri."?".
@@ -53,19 +63,43 @@ while (new CGI::Fast) {
     my $state=param("state");
     my $code=param("code");
 
-    if (! defined $b4k2ssostate or
-        ! defined $b4k2ssoreturn_uri or
-        ! defined $state or
-        ! defined $code or
-          $b4k2ssostate ne $state) {
-          &error;
-          next;
-        }
+    if (! defined $b4k2ssostate) {
+      syslog(LOG_ERR, "$remote_addr [????????]: ERROR missing b4k2sso-state cookie");
+      &error($remote_addr, "????????");
+      next;
+    }
+
+    if (! defined $b4k2ssoreturn_uri) {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR missing b4k2sso-return_uri cookie");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    }
+
+    if (! defined $state) {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR missing state parameter");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    }
+
+    if (! defined $code) {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR missing code parameter");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    }
+
+    if ($b4k2ssostate ne $state) {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR portal state '$state' does not match");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    }
+
+    syslog(LOG_INFO, "$remote_addr [$b4k2ssostate]: fetching tokens using '$code'");
 
     my $pid=open CMD, "-|";
     my $ret;
     if ($pid == 0) {
-      exec "/usr/bin/curl", "-s", "-X", "POST",
+      *STDERR = *STDOUT;
+      exec "/usr/bin/curl", "-s", "-S", "-X", "POST",
         $accessTokenUri,
         "-H", "Authorization: Basic ".$auth,
         "-d", "client_id=".$client_id,
@@ -79,14 +113,63 @@ while (new CGI::Fast) {
     close CMD;
 
     if (! defined $ret) {
-      &error;
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR missing tokens");
+      &error($remote_addr, $b4k2ssostate);
       next;
     }
 
-    my $json=decode_json($ret);
+    my $json;
+    eval {
+      $json=decode_json($ret);
+    } or do {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR invalid tokens '$ret'");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    };
+
+    my $access_token=$json->{'access_token'};
+    my $refresh_token=$json->{'refresh_token'};
+
+    if (! defined $access_token) {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR no access token in '$ret'");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    }
+
+    my $jwt;
+    eval {
+      $jwt=decode_jwt(token=>$access_token,key=>\$pubkey);
+    } or do {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR invalid access_token in '$ret'");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    };
+
+    if (! defined $json->{'refresh_token'}) {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR no refresh_token in '$ret'");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    }
+
+    my $user_name=$jwt->{'user_name'};
+    if (! defined $user_name) {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR no user_name in access_token in '$ret'");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    } 
+
+    eval {
+      $jwt=decode_jwt(token=>$refresh_token,key=>\$pubkey);
+    } or do {
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR invalid refresh token in '$ret'");
+      &error($remote_addr, $b4k2ssostate);
+      next;
+    };
+
+    syslog(LOG_INFO, "$remote_addr [$b4k2ssostate]: authenticated as $user_name");
+
     my $goback=$ENV{'REQUEST_SCHEME'}."://".$ENV{'SERVER_NAME'}.
       $b4k2ssoreturn_uri;
-
 #    print "Content-type: text/plain\n\n";
     print "Location: ".$goback."\n";
     print "Set-Cookie: ".
@@ -107,7 +190,7 @@ while (new CGI::Fast) {
 #
 # Anything else
   } else {
-    &error;
+    &error($remote_addr, "n/a");
     next;
   }
 }
@@ -115,17 +198,52 @@ while (new CGI::Fast) {
 #
 # Write useless message
 sub error {
-  print << "EOF";
-Content-type: text/html
+  my $date=strftime "%b %e %H:%M:%S %G", localtime;
+  my $host=hostname;
+  my $pid=$$;
+  my $ip=shift;
+  my $state=shift;
 
-<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
-<html><head>
-<title>Strange Error</title>
-</head><body>
-<h1>Strange Error</h1>
-<p>This should not happen.</p>
-<hr>
-$ENV{'SERVER_SIGNATURE'}
-</body></html>
+  print << "EOF";
+Content-type: text/html; charset=utf-8
+
+<!DOCTYPE html>
+
+<html lang="de">
+  <head>
+    <title>SSO Error</title>
+    <meta charset="UTF-8">
+    <style>
+      table, th, td {
+        border: 1px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Fehler im Single Sign On</h1>
+    <table>
+      <tr>
+        <td>Date</td>
+        <td>$date</td>
+      </tr>
+      <tr>
+        <td>Host</td>
+        <td>$host</td>
+      </tr>
+      <tr>
+        <td>PID</td>
+        <td>$pid</td>
+      </tr>
+      <tr>
+        <td>Client IP</td>
+        <td>$ip</td>
+      </tr>
+      <tr>
+        <td>State</td>
+        <td>$state</td>
+      </tr>
+    </table>
+  </body>
+</html>
 EOF
 }
