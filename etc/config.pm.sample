@@ -1,18 +1,32 @@
 #!/usr/bin/perl -w
 
 our ($userAuthorizationUri, $accessTokenUri, $client_id, $client_secret,
-    $context, $scope, $pubkey);
+    $context, $scope, $pubkey, $login_var);
 
+#
+# Standard OAuth2 settings
+# Keycloak provides them under
+# https://keycloak.example.com/auth/realms/$REALM/.well-known/openid-configuration
 $userAuthorizationUri="https://auth.example.com//authorize";
 $accessTokenUri="https://auth.examle.com/token";
 $client_id="CLIENTID";
 $client_secret="CLIENTSECRET";
+
+#
+# eGov Portal speciality
 $context="CONTEXT";
 $scope="SCOPE";
+
+#
+# Public key to verify JWT signatures
 $pubkey=<<"EOF";
 -----BEGIN PUBLIC KEY-----
 Base64EncodedRSAKey
 -----END PUBLIC KEY-----
 EOF
+
+#
+# variable containing user name, passed back to Apache
+$login_var="user_name";
 
 1;

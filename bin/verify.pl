@@ -10,7 +10,7 @@ use lib "/opt/b4k2sso/lib64/perl5";
 use Crypt::JWT qw(decode_jwt);
 
 our ($userAuthorizationUri, $accessTokenUri, $client_id, $client_secret,
-    $context, $scope, $pubkey);
+    $context, $scope, $pubkey, $login_var);
 require "/opt/b4k2sso/etc/config.pm";
 
 $|=1;
@@ -37,8 +37,8 @@ while (<>) {
       undef $jwt;
     };
 
-    if (defined $jwt->{'user_name'}) {
-      print $jwt->{'user_name'};
+    if (defined $jwt->{$login_var}) {
+      print $jwt->{$login_var};
     }
   }
 

@@ -17,7 +17,7 @@ use Crypt::JWT qw(decode_jwt);
 use Data::Dumper;
 
 our ($userAuthorizationUri, $accessTokenUri, $client_id, $client_secret,
-    $context, $scope, $pubkey);
+    $context, $scope, $pubkey, $login_var);
 require "/opt/b4k2sso/etc/config.pm";
 
 my $auth=encode_base64($client_id.":".$client_secret);
@@ -45,10 +45,15 @@ while (new CGI::Fast) {
           $userAuthorizationUri."?".
           "client_id=".$client_id."&".
           "response_type=code&".
-          "context=".$context."&".
-          "redirect_uri=".$myurl."&".
-          "scope=".$scope."&".
-          "state=".$state."\n";
+          "redirect_uri=".$myurl."&";
+    if (defined $context) {
+        print "context=".$context."&";
+    }
+    if (defined $scope) {
+        print "scope=".$scope."&";
+    }
+    print "state=".$state."\n";
+
     print "Set-Cookie: ".
           "b4k2sso-state=".$state."; path=/; HttpOnly;\n";
     print "Set-Cookie: ".
@@ -151,9 +156,9 @@ while (new CGI::Fast) {
       next;
     }
 
-    my $user_name=$jwt->{'user_name'};
+    my $user_name=$jwt->{$login_var};
     if (! defined $user_name) {
-      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR no user_name in access_token in '$ret'");
+      syslog(LOG_ERR, "$remote_addr [$b4k2ssostate]: ERROR no $login_var in access_token in '$ret'");
       &error($remote_addr, $b4k2ssostate);
       next;
     } 
